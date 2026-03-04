@@ -1,12 +1,14 @@
-sprogram = []
+program = []
 
+#Get instructions, and convert from hex to binary.
 with open("CPUMemory.txt", "r") as f:
     for line in f:
-        stringCode = line[0:4]
+        stringCode = line[:4]   #Only capture the instructions, no comments.
         stringCode = list(stringCode)
 
         binCode = ""
 
+        #Convert instruction to binary.
         for item in stringCode:
             num = int(item, 16)
             binItem = bin(num)
@@ -17,23 +19,17 @@ with open("CPUMemory.txt", "r") as f:
 
             binCode = binCode + binItem
 
+        #Add instruction to the program.
         program.append(binCode)
 
-program.append(str(0000))
+#Add halt to end of program
+program.append("0000000000000000")
 
-class Node:
-    def __init__(self) -> None:
-        self.value = 0
-        self.forward
-        self.backwards
-
-class Stack:
-    def __init__(self) -> None:
-        pass
-
-    
-
+#Initialize the CPU as a class.
 class CPU:
+    halted = False
+    currentLine = 1
+
     def __init__(self) -> None:
         #General Purpose Registers
         self.registers = {
@@ -64,45 +60,57 @@ class CPU:
         #Program Counter Stack Pointer
         self.PCSP = []
 
+#Establish bitwise logic
 logic_ops = {
     0: lambda x, y: x & y,
     1: lambda x, y: x | y,
     2: lambda x, y: ~x,
 }
 
+#Initialize CPU
 cpu = CPU()
 
+#Copy program into CPU memory.
 for index, line in enumerate(program, start=0):
     cpu.Memory[index] = line
 
+#Function design to check for flags.
 def checkFlags(cpu):
     bit0 = 0
     bit1 = 0
     bit2 = 0
     bit3 = 0
 
+    #Overflow Flag
     if cpu.ALU > 127 or cpu.ALU < -128:
         bit3 = 1
 
+    #Zero Flag
     if cpu.ALU == 0:    
         bit0 = 1
 
+    #Overflow Flag
     if cpu.ALU > 255:
         bit1 = 1
         cpu.ALU = cpu.ALU - 255
 
+    #Negative Flag
     if cpu.ALU < 0:
         bit2 = 1
         cpu.ALU += 255
 
+    #Update the CPU flags
     cpu.Flags = int((str(bit3) + str(bit2) + str(bit1) + str(bit0)), 2)
 
     return cpu.ALU
 
-halted = False
-currentLine = 1
-while not halted:
+#Run the CPU
+while not cpu.halted:
+
+    #Fetch instructions
     instruction = cpu.Memory[cpu.PC]
+
+    #Decode Instructions
     opcode = int(instruction[:4], 2)
     register1 = int(instruction[4:8], 2)
     register2 = int(instruction[8:12], 2)
@@ -110,10 +118,11 @@ while not halted:
     address2 = int(instruction[8:16], 2)
     conditionals = int(instruction[12:16], 2)
 
+    #Execute Instructions
     match opcode:
         case 0: #Halt
-            halted = True
-            print("Ended on line: " + str(currentLine))
+            cpu.halted = True
+            print("Ended on line: " + str(cpu.PC))
             break
         case 1: #Add
             cpu.ALU = cpu.registers[register1] + cpu.registers[register2]
@@ -204,5 +213,5 @@ while not halted:
         case 15: #Return
             cpu.PC = cpu.PCSP.pop()
 
+    #Update program counter.
     cpu.PC = cpu.PC + 1
-    currentLine += 1
